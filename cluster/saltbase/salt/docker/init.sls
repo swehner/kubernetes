@@ -4,6 +4,9 @@
 {% set environment_file = '/etc/default/docker' %}
 {% endif %}
 
+/etc/sysctl.d/99-salt.conf:
+  file.touch
+
 bridge-utils:
   pkg.installed
 
@@ -76,11 +79,11 @@ net.ipv4.ip_forward:
 # 6. Update override_deb, override_deb_sha1, override_docker_ver with new
 #    deb name, new hash and new version
 
-{% set storage_base='https://storage.googleapis.com/kubernetes-release/docker/' %}
+{% set storage_base='https://apt.dockerproject.org/repo/pool/main/d/docker-engine/' %}
 
-{% set override_deb='lxc-docker-1.6.0_1.6.0_amd64.deb' %}
-{% set override_deb_sha1='fdfd749362256877668e13e152d17fe22c64c420' %}
-{% set override_docker_ver='1.6.0' %}
+{% set override_deb='docker-engine_1.8.3-0~vivid_amd64.deb' %}
+{% set override_deb_sha1='f0259b1f04635977325c0cfa7c0006e1e5de1341' %}
+{% set override_docker_ver='1.8.3-0~vivid' %}
 
 {% if grains.cloud is defined and grains.cloud == 'gce' %}
 {% set override_deb='' %}
@@ -108,12 +111,16 @@ net.ipv4.ip_forward:
     - mode: 644
     - makedirs: true
 
-lxc-docker-{{ override_docker_ver }}:
+docker-engine:
   pkg.installed:
     - sources:
-      - lxc-docker-{{ override_docker_ver }}: /var/cache/docker-install/{{ override_deb }}
+      - docker-engine: /var/cache/docker-install/{{ override_deb }}
     - require:
       - file: /var/cache/docker-install/{{ override_deb }}
+lxc-docker:
+  pkg.purged:
+    - pkgs:
+      - lxc-docker-1.6.0
 {% endif %} # end override_docker_ver != ''
 
 # Default docker systemd unit file doesn't use an EnvironmentFile; replace it with one that does.
@@ -141,7 +148,7 @@ fix-service-docker:
       - file: {{ environment_file }}
 {% if override_docker_ver != '' %}
     - require:
-      - pkg: lxc-docker-{{ override_docker_ver }}
+      - pkg: docker-engine
 {% endif %}
 
 {% endif %}
@@ -164,7 +171,7 @@ docker:
 {% endif %}
 {% if override_docker_ver != '' %}
     - require:
-      - pkg: lxc-docker-{{ override_docker_ver }}
+      - pkg: docker-engine
 {% endif %}
 
 {% endif %} # end grains.os_family != 'RedHat'
